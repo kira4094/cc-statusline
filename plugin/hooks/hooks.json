@@ -19,7 +19,10 @@
     }],
     "PostToolUse": [{
       "matcher": "*",
-      "hooks": [{ "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/collector.cjs\"", "timeout": 5 }]
+      "hooks": [
+        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/collector.cjs\"", "timeout": 5 },
+        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" guard", "async": true, "timeout": 5 }
+      ]
     }]
   }
 }
