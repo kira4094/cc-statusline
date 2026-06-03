@@ -2,111 +2,62 @@
 /**
  * cc-statusline: the box.
  *
- * Forwards stdin to continuous sources (claude-hud),
- * runs one-shot sources (test-01/02) on tick,
- * merges all outputs to stdout.
+ * Pure one-shot aggregator. Runs all chain sources, combines output, exits.
+ * CC calls this on each statusLine refresh.
  */
-const { spawn, execSync } = require("child_process");
+const { execSync } = require("child_process");
+const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
 const CONFIG_DIR = path.join(os.homedir(), ".claude-statusline");
 const SOURCES_FILE = path.join(CONFIG_DIR, "sources.json");
-const TICK_MS = 3000;
-const ONESHOT_TIMEOUT = 5000;
-const CONTINUOUS_LABELS = new Set(["claude-hud", "ds-hud"]);
+const TIMEOUT = 5000;
 
 function readConfig() {
   try { return JSON.parse(fs.readFileSync(SOURCES_FILE, "utf8")); } catch { return { chains: [] }; }
 }
 
-// ── Launch continuous sources ──
-const daemonBuffers = [];
-
-function launchContinuous(src) {
-  const cmd = src.command || `node "${src.path}"`;
-  const buf = { label: src.label, lines: [] };
-
+function runOneShot(cmd) {
   try {
-    const proc = spawn("bash", ["-c", cmd], {
-      stdio: [process.stdin, "pipe", "pipe"],
-      env: { ...process.env, COLUMNS: "120" },
-    });
-
-    proc.stdout.on("data", (d) => {
-      const parts = d.toString().split("\n");
-      for (const p of parts) {
-        const t = p.trim();
-        if (t) buf.lines.push(t);
-      }
-      if (buf.lines.length > 30) buf.lines = buf.lines.slice(-10);
-    });
-
-    proc.stderr.on("data", () => {});
-    proc.on("error", () => {});
-    proc.on("exit", () => {
-      const idx = daemonBuffers.indexOf(buf);
-      if (idx >= 0) daemonBuffers.splice(idx, 1);
-    });
-
-    daemonBuffers.push(buf);
-  } catch {}
-}
-
-function getContinuousOutput() {
-  const parts = [];
-  for (const buf of daemonBuffers) {
-    // Take the latest non-junk line
-    for (let i = buf.lines.length - 1; i >= 0; i--) {
-      const l = buf.lines[i];
-      if (l && !l.startsWith("[claude-hud]") && !l.startsWith("Initializing")) {
-        parts.push(l);
-        break;
-      }
-    }
-  }
-  return parts;
-}
-
-// ── One-shot sources ──
-function runOneShot(src) {
-  try {
-    const cmd = src.command || `node "${src.path}"`;
-    return execSync(cmd, {
-      encoding: "utf8", timeout: ONESHOT_TIMEOUT,
-      stdio: ["pipe", "pipe", "ignore"], shell: true,
-    }).trim();
+    return execSync(cmd, { encoding: "utf8", timeout: TIMEOUT, stdio: ["pipe", "pipe", "ignore"], shell: true }).trim();
   } catch { return null; }
 }
 
-// ── Tick ──
-function tick() {
+function httpGet(host, port, path) {
+  return new Promise((resolve) => {
+    const req = http.get({ hostname: host, port, path, timeout: 2000 }, (res) => {
+      let d = "";
+      res.on("data", (c) => d += c);
+      res.on("end", () => resolve(d));
+    });
+    req.on("error", () => resolve(null));
+    req.on("timeout", () => { req.destroy(); resolve(null); });
+  });
+}
+
+async function main() {
   const config = readConfig();
   const parts = [];
 
-  // Continuous
-  parts.push(...getContinuousOutput());
-
-  // One-shot
+  // Run ALL chain sources (all are one-shot)
   for (const src of config.chains) {
-    if (CONTINUOUS_LABELS.has(src.label)) continue;
-    const out = runOneShot(src);
+    const cmd = src.command || `node "${src.path}"`;
+    const out = runOneShot(cmd);
     if (out) parts.push(out);
   }
 
-  const line = parts.join(" | ");
-  if (line) process.stdout.write(line + "\n");
+  // Aggregator API
+  try {
+    const raw = await httpGet("localhost", 13781, "/status");
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data.ds) parts.push(data.ds);
+    }
+  } catch {}
+
+  if (parts.length > 0) process.stdout.write(parts.join(" | ") + "\n");
 }
 
-// ── Main ──
-const config = readConfig();
-for (const src of config.chains) {
-  if (CONTINUOUS_LABELS.has(src.label)) launchContinuous(src);
-}
-
-tick();
-setInterval(tick, TICK_MS);
-
-process.on("SIGTERM", () => process.exit(0));
-process.on("SIGINT", () => process.exit(0));
+main();
