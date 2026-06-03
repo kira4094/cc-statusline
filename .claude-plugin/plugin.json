@@ -1,6 +1,6 @@
 {
   "name": "cc-statusline",
-  "version": "v0.2.5(20260603.1820)",
+  "version": "v0.3.0(20260603.2150)",
   "description": "Unified status line aggregator for Claude Code",
   "author": {
     "name": "kira4094"
