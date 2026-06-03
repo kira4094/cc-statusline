@@ -40,7 +40,8 @@ async function main() {
   for (const src of config.chains) {
     try {
       const { execSync } = require("child_process");
-      const out = execSync(`node "${src.path}"`, { encoding: "utf8", timeout: 3000, stdio: ["pipe", "pipe", "ignore"] }).trim();
+      const cmd = src.command || `node "${src.path}"`;
+      const out = execSync(cmd, { encoding: "utf8", timeout: 5000, stdio: ["pipe", "pipe", "ignore"], shell: true }).trim();
       if (out) allParts.push(out);
     } catch {}
   }
