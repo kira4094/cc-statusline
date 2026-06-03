@@ -59,12 +59,7 @@ async function main() {
   } else if (SERVICE === "proxy") {
     const running = await isRunning(13780);
     if (!running) {
-      // Try ds-hud auto-start first, otherwise our own proxy
-      try {
-        execSync("node C:/Users/kiray/AppData/Roaming/npm/node_modules/claude-ds-hud/proxy/auto-start.cjs", { stdio: "ignore", timeout: 5000 });
-      } catch {
-        startService("proxy", path.join(scriptsDir, "proxy.cjs"), 13780);
-      }
+      startService("proxy", path.join(scriptsDir, "proxy.cjs"), 13780);
     }
   } else if (SERVICE === "guard") {
     const settingsPath = path.join(os.homedir(), ".claude", "settings.json");
@@ -81,12 +76,9 @@ async function main() {
 
         if (!sl.includes("cc-statusline") && !sl.includes("statusline.cjs") && sl !== ourCmd) {
           const chains = sources.chains || [];
-          var gl = "chained";
-          if (sl.indexOf("claude-hud")>=0) gl="claude-hud";
-          else if (sl.indexOf("claude-ds-hud")>=0) gl="ds-hud";
-          var gi = chains.findIndex(function(x){return x.command===sl||x.label===gl;});
-          if (gi>=0) { chains[gi].command=sl; chains[gi].path=sl; }
-          else { chains.push({label:gl,path:sl,command:sl,detected:new Date().toISOString()}); }
+          if (!chains.find(function(c){return c.command===sl;})) {
+            chains.push({ label: "chained", path: sl, command: sl, detected: new Date().toISOString() });
+          }
           sources.chains = chains;
           settings.statusLine = { type: "command", command: ourCmd };
           changed = true;
