@@ -1,0 +1,25 @@
+{
+  "description": "cc-statusline hooks — aggregator + proxy + status line management",
+  "hooks": {
+    "Setup": [{
+      "matcher": "*",
+      "hooks": [
+        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" aggregator", "async": true, "timeout": 10 },
+        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" proxy", "async": true, "timeout": 10 },
+        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" guard", "timeout": 5 }
+      ]
+    }],
+    "SessionStart": [{
+      "matcher": "*",
+      "hooks": [
+        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" aggregator", "async": true, "timeout": 10 },
+        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" proxy", "async": true, "timeout": 10 },
+        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" guard", "timeout": 5 }
+      ]
+    }],
+    "PostToolUse": [{
+      "matcher": "*",
+      "hooks": [{ "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/collector.cjs\"", "timeout": 5 }]
+    }]
+  }
+}

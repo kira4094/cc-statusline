@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "cc-statusline",
+  "description": "Unified status line for Claude Code — aggregates cc-trace, cc-rtk, DeepSeek stats into one status bar",
+  "owner": { "name": "kira4094" },
+  "plugins": [
+    {
+      "name": "cc-statusline",
+      "description": "Aggregate cc-trace, cc-rtk, DeepSeek stats into one status bar",
+      "source": "./plugin",
+      "category": "productivity"
+    }
+  ]
+}

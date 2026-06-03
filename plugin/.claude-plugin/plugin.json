@@ -1,0 +1,8 @@
+{
+  "name": "cc-statusline",
+  "version": "v0.0.1",
+  "description": "Unified status line aggregator for Claude Code",
+  "author": { "name": "kira4094" },
+  "repository": "https://github.com/kira4094/cc-statusline",
+  "license": "MIT"
+}

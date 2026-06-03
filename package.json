@@ -1,0 +1,17 @@
+{
+  "name": "claude-statusline",
+  "version": "0.0.1",
+  "description": "StatusLine aggregator for Claude Code — lets multiple plugins share the status bar",
+  "license": "MIT",
+  "author": "kira4094",
+  "bin": {
+    "claude-statusline": "cli.js"
+  },
+  "files": [
+    "cli.js",
+    "statusline.cjs",
+    "plugins/"
+  ],
+  "keywords": ["claude-code", "statusline", "hud"],
+  "engines": { "node": ">=18.0.0" }
+}
