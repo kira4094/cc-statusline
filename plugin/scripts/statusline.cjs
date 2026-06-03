@@ -1,15 +1,10 @@
 #!/usr/bin/env node
 /**
- * cc-statusline: multi-source statusLine aggregator (the box).
+ * cc-statusline: the box.
  *
- * CC's statusLine system:
- *   stdin  ← CC sends events
- *   stdout → CC displays
- *
- * This process:
- *   - Forwards stdin to continuous sources (claude-hud)
- *   - Runs one-shot sources (test-01/02) on tick
- *   - Merges all outputs into stdout for CC to display
+ * Forwards stdin to continuous sources (claude-hud),
+ * runs one-shot sources (test-01/02) on tick,
+ * merges all outputs to stdout.
  */
 const { spawn, execSync } = require("child_process");
 const fs = require("fs");
@@ -18,119 +13,105 @@ const os = require("os");
 
 const CONFIG_DIR = path.join(os.homedir(), ".claude-statusline");
 const SOURCES_FILE = path.join(CONFIG_DIR, "sources.json");
-
 const TICK_MS = 3000;
 const ONESHOT_TIMEOUT = 5000;
 const CONTINUOUS_LABELS = new Set(["claude-hud", "ds-hud"]);
 
-// ── Read config ──
 function readConfig() {
   try { return JSON.parse(fs.readFileSync(SOURCES_FILE, "utf8")); } catch { return { chains: [] }; }
 }
 
-// ── Launch all sources ──
-const children = []; // { label, proc, buffer[] }
+// ── Launch continuous sources ──
+const daemonBuffers = [];
 
-function launchSource(src) {
+function launchContinuous(src) {
   const cmd = src.command || `node "${src.path}"`;
-  const isContinuous = CONTINUOUS_LABELS.has(src.label);
+  const buf = { label: src.label, lines: [] };
 
-  if (isContinuous) {
-    // Continuous: spawn with stdin/stdout pipes
+  try {
     const proc = spawn("bash", ["-c", cmd], {
       stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, COLUMNS: "120" },
     });
 
-    const buf = { label: src.label, lines: [] };
-
-    proc.stdout.on("data", (data) => {
-      const parts = data.toString().split("\n");
+    proc.stdout.on("data", (d) => {
+      const parts = d.toString().split("\n");
       for (const p of parts) {
         const t = p.trim();
         if (t) buf.lines.push(t);
       }
-      if (buf.lines.length > 20) buf.lines = buf.lines.slice(-10);
+      if (buf.lines.length > 30) buf.lines = buf.lines.slice(-10);
     });
 
-    proc.stderr.on("data", () => {}); // ignore
-
+    proc.stderr.on("data", () => {});
     proc.on("error", () => {});
     proc.on("exit", () => {
-      const idx = children.indexOf(buf);
-      if (idx >= 0) children.splice(idx, 1);
+      const idx = daemonBuffers.indexOf(buf);
+      if (idx >= 0) daemonBuffers.splice(idx, 1);
     });
 
-    children.push(buf);
-    return proc;
+    // Forward stdin
+    process.stdin.on("data", (data) => {
+      try { proc.stdin.write(data); } catch {}
+    });
+
+    daemonBuffers.push(buf);
+  } catch {}
+}
+
+function getContinuousOutput() {
+  const parts = [];
+  for (const buf of daemonBuffers) {
+    // Take the latest non-junk line
+    for (let i = buf.lines.length - 1; i >= 0; i--) {
+      const l = buf.lines[i];
+      if (l && !l.startsWith("[claude-hud]") && !l.startsWith("Initializing")) {
+        parts.push(l);
+        break;
+      }
+    }
   }
-  return null;
+  return parts;
+}
+
+// ── One-shot sources ──
+function runOneShot(src) {
+  try {
+    const cmd = src.command || `node "${src.path}"`;
+    return execSync(cmd, {
+      encoding: "utf8", timeout: ONESHOT_TIMEOUT,
+      stdio: ["pipe", "pipe", "ignore"], shell: true,
+    }).trim();
+  } catch { return null; }
+}
+
+// ── Tick ──
+function tick() {
+  const config = readConfig();
+  const parts = [];
+
+  // Continuous
+  parts.push(...getContinuousOutput());
+
+  // One-shot
+  for (const src of config.chains) {
+    if (CONTINUOUS_LABELS.has(src.label)) continue;
+    const out = runOneShot(src);
+    if (out) parts.push(out);
+  }
+
+  const line = parts.join(" | ");
+  if (line) process.stdout.write(line + "\n");
 }
 
 // ── Main ──
-function main() {
-  const config = readConfig();
-  const continuousProcs = [];
-
-  // Start all continuous sources
-  for (const src of config.chains) {
-    const p = launchSource(src);
-    if (p) continuousProcs.push(p);
-  }
-
-  // Forward our stdin to all continuous processes
-  if (continuousProcs.length > 0) {
-    process.stdin.on("data", (data) => {
-      for (const p of continuousProcs) {
-        try { p.stdin.write(data); } catch {}
-      }
-    });
-  }
-
-  // Tick: collect outputs and write combined line
-  function tick() {
-    const parts = [];
-
-    // Collect from continuous daemon buffers
-    for (const buf of children) {
-      const relevant = buf.lines.filter(
-        (l) => !l.startsWith("[claude-hud]") && !l.startsWith("Initializing")
-      );
-      if (relevant.length > 0) {
-        parts.push(relevant[relevant.length - 1]);
-      }
-    }
-
-    // Run one-shot sources
-    for (const src of config.chains) {
-      if (CONTINUOUS_LABELS.has(src.label)) continue;
-      try {
-        const cmd = src.command || `node "${src.path}"`;
-        const out = execSync(cmd, {
-          encoding: "utf8", timeout: ONESHOT_TIMEOUT,
-          stdio: ["pipe", "pipe", "ignore"], shell: true,
-        }).trim();
-        if (out) parts.push(out);
-      } catch {}
-    }
-
-    if (parts.length > 0) {
-      process.stdout.write(parts.join(" | ") + "\n");
-    }
-  }
-
-  // First tick immediately
-  tick();
-  setInterval(tick, TICK_MS);
-
-  // Cleanup on exit
-  process.on("SIGTERM", () => {
-    continuousProcs.forEach((p) => { try { p.kill(); } catch {} });
-    process.exit(0);
-  });
-  process.on("SIGINT", () => {
-    continuousProcs.forEach((p) => { try { p.kill(); } catch {} });
-    process.exit(0);
-  });
+const config = readConfig();
+for (const src of config.chains) {
+  if (CONTINUOUS_LABELS.has(src.label)) launchContinuous(src);
 }
 
-main();
+tick();
+setInterval(tick, TICK_MS);
+
+process.on("SIGTERM", () => process.exit(0));
+process.on("SIGINT", () => process.exit(0));
