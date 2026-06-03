@@ -1,7 +1,7 @@
 ---
 name: setup
 description: Configure statusLine in settings.json — chains existing tools, prevents overwrites
-disable-model-invocation: true
+disable-model-invocation: false
 allowed-tools: [Bash]
 ---
 
