@@ -66,7 +66,7 @@ function main() {
     log("Settings backup saved (first install)");
   }
 
-  if (existingStatusLine && !existingStatusLine.includes("claude-hud")) {
+  if (existingStatusLine) {
     const knownLabels = {
       "claude-ds-hud": "ds-hud",
       "claude-hud": "claude-hud",
