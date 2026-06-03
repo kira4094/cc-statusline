@@ -77,7 +77,8 @@ async function main() {
         const sourcesPath = path.join(CONFIG_DIR, "sources.json");
         if (fs.existsSync(sourcesPath)) {
           const sources = JSON.parse(fs.readFileSync(sourcesPath, "utf8"));
-          if (sources.ourCommand && sl !== sources.ourCommand) {
+          const ourCmd = `node "${sources.ourCommand}"`;
+          if (sl !== ourCmd) {
             // Someone overwrote us (probably claude-hud). Fix it.
             // We chain the overwriter instead of losing our place.
             const chains = sources.chains || [];
