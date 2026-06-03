@@ -38,6 +38,12 @@ function writeJson(p, data) {
   fs.writeFileSync(p, JSON.stringify(data, null, 2) + "\n");
 }
 
+function deriveIdentity(cmd) {
+  const m = cmd.match(/plugins[/\\]cache[/\\]([^/\\]+)[/\\]([^/\\]+)[/\\]/);
+  if (m) return `plugin:${m[1]}/${m[2]}`;
+  return null;
+}
+
 // --- Main ---
 
 function main() {
@@ -82,6 +88,7 @@ function main() {
         label,
         path: existingStatusLine,
         command: existingStatusLine,
+        identity: deriveIdentity(existingStatusLine) || undefined,
         detected: new Date().toISOString(),
       });
       log(`Chained existing statusLine: "${label}" → ${existingStatusLine}`);
@@ -101,6 +108,7 @@ function main() {
               label: "claude-hud",
               path: hook.command,
               command: hook.command,
+              identity: deriveIdentity(hook.command) || undefined,
               detected: new Date().toISOString(),
               source: "hook",
             });

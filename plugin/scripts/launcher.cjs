@@ -50,6 +50,15 @@ function startService(name, script, port) {
   fs.writeFileSync(pf, String(child.pid));
 }
 
+function deriveIdentity(cmd) {
+  // Extract stable plugin identity from paths like:
+  //   ...plugins/cache/<market>/<name>/<version>/...
+  // Returns "plugin:<market>/<name>" or null for non-plugin commands
+  const m = cmd.match(/plugins[/\\]cache[/\\]([^/\\]+)[/\\]([^/\\]+)[/\\]/);
+  if (m) return `plugin:${m[1]}/${m[2]}`;
+  return null;
+}
+
 async function main() {
   const scriptsDir = path.join(ROOT, "scripts");
 
@@ -68,23 +77,52 @@ async function main() {
       const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
       const sl = settings.statusLine?.command || "";
 
-      // 1. Restore statusLine if overwritten
       if (fs.existsSync(sourcesPath)) {
         const sources = JSON.parse(fs.readFileSync(sourcesPath, "utf8"));
         const ourCmd = `node "${sources.ourCommand}"`;
         let changed = false;
 
+        // 0. Migrate: fill missing identity for old chains
+        for (const ch of (sources.chains || [])) {
+          if (!ch.identity && ch.command) {
+            const id = deriveIdentity(ch.command);
+            if (id) { ch.identity = id; changed = true; }
+          }
+        }
+
+        // 1. Restore statusLine if overwritten — identity-based dedup
         if (!sl.includes("cc-statusline") && !sl.includes("statusline.cjs") && sl !== ourCmd) {
           const chains = sources.chains || [];
-          if (!chains.find(function(c){return c.command===sl;})) {
-            chains.push({ label: "chained", path: sl, command: sl, detected: new Date().toISOString() });
+          const incomingId = deriveIdentity(sl);
+          const existingIdx = incomingId
+            ? chains.findIndex(c => c.identity === incomingId)
+            : chains.findIndex(c => c.command === sl);
+
+          if (existingIdx === -1) {
+            // New plugin — chain it
+            chains.push({
+              label: "chained",
+              path: sl,
+              command: sl,
+              identity: incomingId || undefined,
+              detected: new Date().toISOString()
+            });
+          } else {
+            // Same plugin, new version — update path, don't duplicate
+            const existing = chains[existingIdx];
+            if (existing.command !== sl) {
+              existing.path = sl;
+              existing.command = sl;
+              existing.detected = new Date().toISOString();
+              if (incomingId) existing.identity = incomingId;
+            }
           }
           sources.chains = chains;
           settings.statusLine = { type: "command", command: ourCmd };
           changed = true;
         }
 
-        // 2. Auto-update chain paths when plugins version-bump
+        // 2. Version-bump update for remaining chains
         for (let ci = 0; ci < (sources.chains || []).length; ci++) {
           const ch = sources.chains[ci];
           if (!ch.path) continue;
