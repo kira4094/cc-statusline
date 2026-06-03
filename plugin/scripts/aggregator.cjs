@@ -63,7 +63,6 @@ const server = http.createServer(async (req, res) => {
   res.setHeader("Content-Type", "application/json");
 
   if (req.url === "/status") {
-    const ds = await collectDsStats();
 
     // Read chain sources from sources.json
     let chains = [];
@@ -72,7 +71,7 @@ const server = http.createServer(async (req, res) => {
       chains = cfg.chains || [];
     } catch {}
 
-    const result = { ds, chains: chains.map(c => c.label) };
+    const result = { chains: chains.map(c => c.label) };
     fs.writeFileSync(DATA_FILE, JSON.stringify(result));
     res.end(JSON.stringify(result));
   } else if (req.url === "/health") {
