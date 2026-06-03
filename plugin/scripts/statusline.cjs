@@ -3,7 +3,7 @@
  * cc-statusline: the box.
  *
  * Forward stdin to continuous sources (claude-hud),
- * run one-shot sources (test-01/02) on tick,
+ * run one-shot sources on tick,
  * merge all outputs to stdout.
  */
 const { spawn, execSync } = require("child_process");
@@ -22,20 +22,48 @@ function readConfig() {
   try { return JSON.parse(fs.readFileSync(SOURCES_FILE, "utf8")); } catch { return { chains: [] }; }
 }
 
-// ── Continuous sources (claude-hud) ──
+// ── Resolve claude-hud dist path ──
+function resolveClaudeHudPath() {
+  try {
+    const dirs = fs.readdirSync(path.join(os.homedir(), ".claude", "plugins", "cache"));
+    for (const mp of dirs) {
+      const hudDir = path.join(os.homedir(), ".claude", "plugins", "cache", mp, "claude-hud");
+      if (fs.existsSync(hudDir)) {
+        const versions = fs.readdirSync(hudDir).filter(d => /^\d/.test(d)).sort().reverse();
+        if (versions.length > 0) {
+          const dist = path.join(hudDir, versions[0], "dist", "index.js");
+          if (fs.existsSync(dist)) return dist;
+        }
+      }
+    }
+  } catch {}
+  return null;
+}
+
+// ── Continuous sources ──
 const continuousProcs = [];
 const daemonBuffers = [];
 
 function launchContinuous(src) {
-  const cmd = src.command || `node "${src.path}"`;
+  const buf = { label: src.label, lines: [] };
 
   try {
-    const proc = spawn("bash", ["-c", cmd], {
-      stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env, COLUMNS: "120" },
-    });
+    let proc;
 
-    const buf = { label: src.label, lines: [] };
+    if (src.label === "claude-hud") {
+      // Spawn node directly — no bash wrapper, avoids /dev/tty issues
+      const distPath = resolveClaudeHudPath() || src.path;
+      proc = spawn("node", [distPath], {
+        stdio: ["pipe", "pipe", "pipe"],
+        env: { ...process.env, COLUMNS: "120" },
+      });
+    } else {
+      const cmd = src.command || `node "${src.path}"`;
+      proc = spawn("bash", ["-c", cmd], {
+        stdio: ["pipe", "pipe", "pipe"],
+        env: { ...process.env, COLUMNS: "120" },
+      });
+    }
 
     proc.stdout.on("data", (d) => {
       const parts = d.toString().split("\n");
@@ -60,7 +88,7 @@ function launchContinuous(src) {
   } catch {}
 }
 
-// ── One-shot sources (test-01, test-02) ──
+// ── One-shot sources ──
 function runOneShot(cmd) {
   try {
     return execSync(cmd, { encoding: "utf8", timeout: ONESHOT_TIMEOUT, stdio: ["pipe", "pipe", "ignore"], shell: true }).trim();
@@ -71,7 +99,7 @@ function httpGet(host, port, url) {
   return new Promise((resolve) => {
     const req = http.get({ hostname: host, port, path: url, timeout: 2000 }, (res) => {
       let d = "";
-      res.on("d", (c) => d += c);
+      res.on("data", (c) => d += c);
       res.on("end", () => resolve(d));
     });
     req.on("error", () => resolve(null));
@@ -84,12 +112,10 @@ function tick() {
   const config = readConfig();
   const parts = [];
 
-  // Continuous: latest line from each daemon buffer
   for (const buf of daemonBuffers) {
     if (buf.lines.length > 0) parts.push(buf.lines[buf.lines.length - 1]);
   }
 
-  // One-shot
   for (const src of config.chains) {
     if (CONTINUOUS_LABELS.has(src.label)) continue;
     const cmd = src.command || `node "${src.path}"`;
@@ -104,12 +130,10 @@ function tick() {
 // ── Main ──
 const config = readConfig();
 
-// Start continuous sources
 for (const src of config.chains) {
   if (CONTINUOUS_LABELS.has(src.label)) launchContinuous(src);
 }
 
-// Forward stdin to all continuous processes
 if (continuousProcs.length > 0) {
   process.stdin.on("data", (data) => {
     for (const p of continuousProcs) {
@@ -119,7 +143,6 @@ if (continuousProcs.length > 0) {
   process.stdin.resume();
 }
 
-// First tick immediately
 tick();
 setInterval(tick, TICK_MS);
 
