@@ -30,7 +30,7 @@ function launchContinuous(src) {
 
   try {
     const proc = spawn("bash", ["-c", cmd], {
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: [process.stdin, "pipe", "pipe"],
       env: { ...process.env, COLUMNS: "120" },
     });
 
@@ -48,11 +48,6 @@ function launchContinuous(src) {
     proc.on("exit", () => {
       const idx = daemonBuffers.indexOf(buf);
       if (idx >= 0) daemonBuffers.splice(idx, 1);
-    });
-
-    // Forward stdin
-    process.stdin.on("data", (data) => {
-      try { proc.stdin.write(data); } catch {}
     });
 
     daemonBuffers.push(buf);
