@@ -50,13 +50,19 @@ function main() {
     process.exit(1);
   }
 
-  // Backup
-  writeJson(BACKUP_FILE, settings);
-  log("Settings backup saved");
-
-  // 2. Detect existing statusLine
+  // 2. Detect existing statusLine (save original BEFORE we modify)
   const existingStatusLine = settings.statusLine?.command || "";
   const chains = [];
+
+  // Check if we already have a sources.json (re-run scenario)
+  const existingSources = readJson(SOURCES_FILE);
+  const previousStatusLine = existingSources?.previousStatusLine || existingStatusLine;
+
+  // Backup original settings only on first run
+  if (!existingSources) {
+    writeJson(BACKUP_FILE, settings);
+    log("Settings backup saved (first install)");
+  }
 
   if (existingStatusLine) {
     const knownLabels = {
@@ -110,6 +116,7 @@ function main() {
   // 4. Write sources.json (chaining config)
   const sources = {
     ourCommand: OUR_STATUSLINE,
+    previousStatusLine,   // save original for uninstall restore
     chains,
     installedAt: new Date().toISOString(),
     version: "0.0.1",
