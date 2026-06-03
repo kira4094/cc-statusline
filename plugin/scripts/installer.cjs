@@ -56,7 +56,9 @@ function main() {
 
   // Check if we already have a sources.json (re-run scenario)
   const existingSources = readJson(SOURCES_FILE);
-  const previousStatusLine = existingSources?.previousStatusLine || existingStatusLine;
+  const previousStatusLine = existingSources?.previousStatusLine !== undefined
+    ? existingSources.previousStatusLine
+    : existingStatusLine;
 
   // Backup original settings only on first run
   if (!existingSources) {
