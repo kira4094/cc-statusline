@@ -91,7 +91,7 @@ async function main() {
         }
 
         // 1. Restore statusLine if overwritten — identity-based dedup
-        if (!sl.includes("cc-statusline") && !sl.includes("statusline.cjs") && sl !== ourCmd) {
+        if (!sl.includes("cc-statusline") && sl !== ourCmd) {
           const chains = sources.chains || [];
           const incomingId = deriveIdentity(sl);
           const existingIdx = incomingId
