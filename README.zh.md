@@ -1,5 +1,7 @@
 # cc-statusLine 🔗
 
+[English](README.md)
+
 **聚合器。** 一个状态栏，统治所有。
 
 厌倦了你的 statusLine 只能住一个人？cc-statusline 把它变成了合租房 —— claude-hud、cc-rtk、你自己的脚本，全部挤在一起其乐融融。

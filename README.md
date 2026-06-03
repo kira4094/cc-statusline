@@ -1,5 +1,7 @@
 # cc-statusLine 🔗
 
+[中文](README.zh.md)
+
 **The box.** One status bar to rule them all.
 
 Tired of your statusLine being a single-tenant apartment? cc-statusline turns it into a shared living space — claude-hud, cc-rtk, your custom scripts, all living together in harmony.
