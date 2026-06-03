@@ -70,8 +70,6 @@ function main() {
     const knownLabels = {
       "claude-ds-hud": "ds-hud",
       "claude-hud": "claude-hud",
-      "statusline-01": "test-01",
-      "statusline-02": "test-02",
     };
 
     // Determine label
