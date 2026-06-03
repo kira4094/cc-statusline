@@ -52,10 +52,8 @@ function main() {
 
   // 2. Detect existing statusLine (save original BEFORE we modify)
   const existingStatusLine = settings.statusLine?.command || "";
-  const chains = [];
-
-  // Check if we already have a sources.json (re-run scenario)
   const existingSources = readJson(SOURCES_FILE);
+  const chains = existingSources?.chains ? JSON.parse(JSON.stringify(existingSources.chains)) : [];
   const previousStatusLine = existingSources?.previousStatusLine !== undefined
     ? existingSources.previousStatusLine
     : existingStatusLine;
