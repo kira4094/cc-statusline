@@ -109,8 +109,11 @@ async function main() {
   // cc-statusline indicator (golden)
   const R = "\x1b[38;2;255;185;15m[↪▨]\x1b[0m ";
 
+  // Sort by priority (lower = earlier), default 99
+  const sorted = [...(config.chains || [])].sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99));
+
   // Run all chain sources — JSON piped to all, non-readers ignore it
-  for (const src of config.chains) {
+  for (const src of sorted) {
     const o = runChain(src, json);
     if (o) outputs.push(o);
   }
