@@ -71,52 +71,19 @@ function main() {
   }
 
   if (existingStatusLine) {
-    const knownLabels = {
-      "claude-ds-hud": "ds-hud",
-      "claude-hud": "claude-hud",
-    };
-
-    // Determine label
-    let label = "unknown";
-    for (const [key, val] of Object.entries(knownLabels)) {
-      if (existingStatusLine.includes(key)) { label = val; break; }
-    }
-
     // Only chain if it's not ourselves
     if (!existingStatusLine.includes("cc-statusline") && !existingStatusLine.includes("statusline.cjs")) {
       chains.push({
-        label,
+        label: "chained",
         path: existingStatusLine,
         command: existingStatusLine,
         identity: deriveIdentity(existingStatusLine) || undefined,
         detected: new Date().toISOString(),
       });
-      log(`Chained existing statusLine: "${label}" → ${existingStatusLine}`);
+      log(`Chained existing statusLine: ${existingStatusLine}`);
     }
   } else {
     log("No existing statusLine found, will set fresh");
-  }
-
-  // 3. Also check hook-based statusLine (some tools use Setup hooks)
-  const existingHooks = settings.hooks || {};
-  if (existingHooks.Setup) {
-    for (const entry of existingHooks.Setup) {
-      if (entry.hooks) {
-        for (const hook of entry.hooks) {
-          if (hook.command && hook.command.includes("claude-hud") && !chains.find(c => c.command === hook.command)) {
-            chains.push({
-              label: "claude-hud",
-              path: hook.command,
-              command: hook.command,
-              identity: deriveIdentity(hook.command) || undefined,
-              detected: new Date().toISOString(),
-              source: "hook",
-            });
-            log(`Detected claude-hud in Setup hooks`);
-          }
-        }
-      }
-    }
   }
 
   // 4. Write sources.json (chaining config)
