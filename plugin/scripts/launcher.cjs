@@ -147,8 +147,12 @@ async function main() {
         }
 
         if (changed) {
-          fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
-          fs.writeFileSync(sourcesPath, JSON.stringify(sources, null, 2) + "\n");
+          const stmp = settingsPath + ".tmp." + process.pid;
+          fs.writeFileSync(stmp, JSON.stringify(settings, null, 2) + "\n");
+          fs.renameSync(stmp, settingsPath);
+          const sotmp = sourcesPath + ".tmp." + process.pid;
+          fs.writeFileSync(sotmp, JSON.stringify(sources, null, 2) + "\n");
+          fs.renameSync(sotmp, sourcesPath);
         }
       }
     } catch {}

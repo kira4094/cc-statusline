@@ -35,7 +35,9 @@ function readJson(p) {
 }
 
 function writeJson(p, data) {
-  fs.writeFileSync(p, JSON.stringify(data, null, 2) + "\n");
+  const tmp = p + ".tmp." + process.pid;
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + "\n");
+  fs.renameSync(tmp, p);
 }
 
 function deriveIdentity(cmd) {
