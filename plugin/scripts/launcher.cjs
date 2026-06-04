@@ -83,13 +83,8 @@ async function main() {
         settingsRaw = settingsRaw.replace(/[}\]]\s*$/, "");
       }
       if (!settings) {
-        // Last resort: backup and reset
-        const backupPath = settingsPath + ".corrupt." + Date.now();
-        fs.copyFileSync(settingsPath, backupPath);
-        settings = { statusLine: {}, permissions: {} };
-        const stmp = settingsPath + ".tmp." + process.pid;
-        fs.writeFileSync(stmp, JSON.stringify(settings, null, 2) + "\n");
-        fs.renameSync(stmp, settingsPath);
+        // Can't parse — skip this guard run, retry on next hook
+        return;
       }
       const sl = settings.statusLine?.command || "";
 
