@@ -130,7 +130,12 @@ async function main() {
   } catch {}
 
   if (outputs.length > 0) {
-    process.stdout.write(R + outputs.join(" | ") + "\n");
+    let line = R;
+    for (let i = 0; i < outputs.length; i++) {
+      if (i > 0) line += outputs[i - 1].includes("\n") ? "\n" : " | ";
+      line += outputs[i];
+    }
+    process.stdout.write(line + "\n");
   }
 }
 
