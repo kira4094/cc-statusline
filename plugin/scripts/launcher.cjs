@@ -74,7 +74,23 @@ async function main() {
     const settingsPath = path.join(os.homedir(), ".claude", "settings.json");
     const sourcesPath = path.join(CONFIG_DIR, "sources.json");
     try {
-      const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+      // Auto-repair corrupted JSON (e.g., extra trailing brace from concurrent writes)
+      let settingsRaw = fs.readFileSync(settingsPath, "utf8");
+      let settings = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try { settings = JSON.parse(settingsRaw); break; } catch {}
+        // Try removing trailing } or ]
+        settingsRaw = settingsRaw.replace(/[}\]]\s*$/, "");
+      }
+      if (!settings) {
+        // Last resort: backup and reset
+        const backupPath = settingsPath + ".corrupt." + Date.now();
+        fs.copyFileSync(settingsPath, backupPath);
+        settings = { statusLine: {}, permissions: {} };
+        const stmp = settingsPath + ".tmp." + process.pid;
+        fs.writeFileSync(stmp, JSON.stringify(settings, null, 2) + "\n");
+        fs.renameSync(stmp, settingsPath);
+      }
       const sl = settings.statusLine?.command || "";
 
       if (fs.existsSync(sourcesPath)) {
