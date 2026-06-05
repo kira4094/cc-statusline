@@ -91,6 +91,108 @@ function runChain(src, json) {
 }
 
 
+/**
+ * Auto-discover statusline plugins from plugins/cache/ when chains are empty.
+ * Scans known plugin directories, finds latest versions, runs them, and persists to sources.json.
+ */
+function autoDiscover(json) {
+  const knownPlugins = [
+    { name: 'claude-hud', label: 'claude-hud', entry: 'dist/index.js',
+      buildCmd: (ep) => `cols=$(stty size </dev/tty 2>/dev/null | awk '{print }'); export COLUMNS=$(( ${cols:-120} > 4 ? ${cols:-120} - 4 : 1 )); plugin_dir="$(dirname "$(dirname "${ep}")")"; exec "${ep}"`
+    },
+    { name: 'cc-trace', label: 'cc-trace', entry: 'scripts/statusline.cjs',
+      buildCmd: (ep) => `node "${ep}"`
+    },
+    { name: 'cc-rtk', label: 'cc-rtk', entry: 'scripts/statusline.cjs',
+      buildCmd: (ep) => `node "${ep}"`
+    },
+    { name: 'cc-ds', label: 'cc-ds', entry: 'scripts/statusline.cjs',
+      buildCmd: (ep) => `node "${ep}"`
+    },
+    { name: 'context-mode', label: 'context-mode', entry: 'cli.bundle.mjs',
+      buildCmd: (ep) => `node "${ep}" statusline`
+    },
+  ];
+
+  const discovered = [];
+
+  for (const p of knownPlugins) {
+    try {
+      const dirs = fs.readdirSync(CACHE_DIR);
+      for (const market of dirs) {
+        const pluginDir = path.join(CACHE_DIR, market, p.name);
+        if (!fs.existsSync(pluginDir)) continue;
+        const versions = fs.readdirSync(pluginDir).filter(d => /^\d/.test(d)).sort().reverse();
+        if (versions.length === 0) continue;
+        const versionDir = path.join(pluginDir, versions[0]);
+        const entryPath = path.join(versionDir, p.entry);
+        if (!fs.existsSync(entryPath)) continue;
+
+        const cmd = p.buildCmd(entryPath);
+        const identity = `plugin:${market}/${p.name}`;
+
+        try {
+          const o = execSync(cmd, {
+            encoding: 'utf8',
+            timeout: ONESHOT_TIMEOUT,
+            input: json,
+            stdio: ['pipe', 'pipe', 'ignore'],
+            shell: true,
+          }).trim();
+          if (o) {
+            discovered.push({ identity, cmd, label: p.label, output: o });
+          }
+        } catch {}
+      }
+    } catch {}
+  }
+
+  // Persist to sources.json
+  if (discovered.length > 0) {
+    try {
+      const config = readConfig();
+      const chains = config.chains || [];
+      let changed = false;
+
+      for (const d of discovered) {
+        if (!chains.some(c => c.identity === d.identity)) {
+          chains.push({
+            label: d.label,
+            path: d.cmd,
+            command: d.cmd,
+            identity: d.identity,
+            detected: new Date().toISOString(),
+            priority: 0,
+          });
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        config.chains = chains;
+        const tmp = SOURCES_FILE + '.tmp.' + process.pid;
+        fs.writeFileSync(tmp, JSON.stringify(config, null, 2) + '\n');
+        fs.renameSync(tmp, SOURCES_FILE);
+
+        // Also ensure settings.json points to cc-statusline
+        const settingsPath = path.join(os.homedir(), '.claude', 'settings.json');
+        try {
+          const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+          const ourCmd = `node "${__filename}"`;
+          if (!(settings.statusLine?.command || '').includes('cc-statusline')) {
+            settings.statusLine = { type: 'command', command: ourCmd };
+            const stmp = settingsPath + '.tmp.' + process.pid;
+            fs.writeFileSync(stmp, JSON.stringify(settings, null, 2) + '\n');
+            fs.renameSync(stmp, settingsPath);
+          }
+        } catch {}
+      }
+    } catch {}
+  }
+
+  return discovered.map(d => d.output);
+}
+
 function readStdin() {
   return new Promise((resolve) => {
     const c = [];
@@ -116,6 +218,12 @@ async function main() {
   for (const src of sorted) {
     const o = runChain(src, json);
     if (o) outputs.push(o);
+  }
+
+  // Self-healing: if chains produced nothing, auto-discover from plugins/cache/
+  if (outputs.length === 0) {
+    const discovered = autoDiscover(json);
+    outputs.push(...discovered);
   }
 
   // Aggregator
