@@ -98,7 +98,7 @@ function runChain(src, json) {
 function autoDiscover(json) {
   const knownPlugins = [
     { name: 'claude-hud', label: 'claude-hud', entry: 'dist/index.js',
-      buildCmd: (ep) => `cols=$(stty size </dev/tty 2>/dev/null | awk '{print }'); export COLUMNS=$(( ${cols:-120} > 4 ? ${cols:-120} - 4 : 1 )); plugin_dir="$(dirname "$(dirname "${ep}")")"; exec "${ep}"`
+      buildCmd: (ep) => 'cols=$(stty size </dev/tty 2>/dev/null | awk \'{print }\'); export COLUMNS=$(( ${cols:-120} > 4 ? ${cols:-120} - 4 : 1 )); exec node "' + ep.replace(/\\/g, '/') + '"'
     },
     { name: 'cc-trace', label: 'cc-trace', entry: 'scripts/statusline.cjs',
       buildCmd: (ep) => `node "${ep}"`
