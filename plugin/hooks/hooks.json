@@ -6,7 +6,8 @@
       "hooks": [
         { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" aggregator", "async": true, "timeout": 10 },
         { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" proxy", "async": true, "timeout": 10 },
-        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" guard", "timeout": 5 }
+        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" guard", "timeout": 5 },
+        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-delayed.cjs\"", "async": true, "timeout": 10 }
       ]
     }],
     "SessionStart": [{
@@ -14,7 +15,8 @@
       "hooks": [
         { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" aggregator", "async": true, "timeout": 10 },
         { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" proxy", "async": true, "timeout": 10 },
-        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" guard", "timeout": 5 }
+        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/launcher.cjs\" guard", "timeout": 5 },
+        { "type": "command", "shell": "bash", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-delayed.cjs\"", "async": true, "timeout": 10 }
       ]
     }],
     "PostToolUse": [{
