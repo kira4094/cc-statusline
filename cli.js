@@ -74,7 +74,7 @@ function cmdStatus() {
 function main() {
   const args = process.argv.slice(2);
   if (args.length === 0) {
-    console.log(`Usage: claude-statusline <command>
+    console.log(`Usage: claude-statusline (npm: @kira4094/claude-statusline) <command>
 
 Commands:
   install               Register cc-statusline plugin

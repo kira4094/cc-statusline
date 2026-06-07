@@ -53,7 +53,7 @@ Restart Claude Code. You'll see `[↪▨]` at the bottom.
 ### Option 2: npm install
 
 ```bash
-npm install -g claude-statusline
+npm install -g @kira4094/claude-statusline
 claude-statusline install
 ```
 
@@ -85,7 +85,7 @@ claude-statusline install
 ### npm uninstall
 ```bash
 claude-statusline uninstall --purge
-npm uninstall -g claude-statusline
+npm uninstall -g @kira4094/claude-statusline
 ```
 
 Then restart Claude Code and run:

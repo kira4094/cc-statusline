@@ -51,7 +51,7 @@ CC 每次刷新都往 statusLine 塞一段 JSON。cc-statusline：
 ### 方式二：npm 安装
 
 ```bash
-npm install -g claude-statusline
+npm install -g @kira4094/claude-statusline
 claude-statusline install
 ```
 
@@ -83,7 +83,7 @@ claude-statusline install
 ### npm 方式卸载
 ```bash
 claude-statusline uninstall --purge
-npm uninstall -g claude-statusline
+npm uninstall -g @kira4094/claude-statusline
 ```
 
 重启 Claude Code，然后执行：

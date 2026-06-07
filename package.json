@@ -1,5 +1,5 @@
 {
-  "name": "claude-statusline",
+  "name": "@kira4094/claude-statusline",
   "version": "0.4.7",
   "description": "Aggregator for Claude Code status bar — chains cc-trace, cc-rtk, cc-ds, claude-hud into one unified statusLine",
   "license": "MIT",
