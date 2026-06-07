@@ -1,17 +1,34 @@
 {
   "name": "claude-statusline",
-  "version": "0.0.1",
-  "description": "StatusLine aggregator for Claude Code — lets multiple plugins share the status bar",
+  "version": "0.4.7",
+  "description": "Aggregator for Claude Code status bar — chains cc-trace, cc-rtk, cc-ds, claude-hud into one unified statusLine",
   "license": "MIT",
   "author": "kira4094",
+  "homepage": "https://github.com/kira4094/cc-statusline",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kira4094/cc-statusline.git"
+  },
   "bin": {
     "claude-statusline": "cli.js"
   },
   "files": [
     "cli.js",
-    "statusline.cjs",
-    "plugins/"
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
   ],
-  "keywords": ["claude-code", "statusline", "hud"],
-  "engines": { "node": ">=18.0.0" }
+  "scripts": {
+    "prepublishOnly": "node scripts/update-version.cjs && node -e \"var v=require('./version.json'),p=require('./package.json');p.version=v.version;require('fs').writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n')\"",
+    "postinstall": "node -e \"console.log('[claude-statusline] installed! Run: claude-statusline install')\""
+  },
+  "keywords": [
+    "claude-code",
+    "statusline",
+    "hud",
+    "aggregator"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
